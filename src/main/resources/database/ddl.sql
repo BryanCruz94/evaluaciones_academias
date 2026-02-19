@@ -66,9 +66,11 @@ CREATE TABLE alumno (
                         apellidos           VARCHAR(150) NOT NULL,
                         email               VARCHAR(254),
                         fecha_nacimiento    DATE,
+                        cedula              VARCHAR(10) UNIQUE,
+
                         genero              genero NOT NULL,
-                        estatura_cm         NUMERIC(4,2),
-                        peso_kg             NUMERIC(4,2),
+                        estatura_cm         double,
+                        peso_kg             double,
                         imc                 NUMERIC(5,2),
 
                         estado              estado_alumno NOT NULL DEFAULT 'ACTIVO',

@@ -9,7 +9,10 @@ import java.time.LocalDate;
 @Table(
         name = "alumno",
         uniqueConstraints = @UniqueConstraint(name = "uq_alumno_email", columnNames = {"academia_id", "email"}),
-        indexes = @Index(name = "idx_alumno_academia", columnList = "academia_id")
+        indexes = {
+                @Index(name = "idx_alumno_cedula", columnList = "cedula", unique = true),
+                @Index(name = "idx_alumno_academia", columnList = "academia_id")
+        }
 )
 public class Alumno extends AuditableEntity {
 
@@ -31,6 +34,9 @@ public class Alumno extends AuditableEntity {
     @Column(nullable = false, length = 150)
     private String apellidos;
 
+    @Column(nullable = false, unique = true, length = 10)
+    private String cedula;
+
     @Column(length = 254)
     private String email;
 
@@ -41,11 +47,11 @@ public class Alumno extends AuditableEntity {
     @Column(nullable = false, columnDefinition = "genero")
     private Genero genero;
 
-    @Column(name = "estatura_cm", precision = 4, scale = 2)
-    private BigDecimal estaturaCm;
+    @Column(name = "estatura_cm")
+    private Double estaturaCm;
 
-    @Column(name = "peso_kg", precision = 4, scale = 2)
-    private BigDecimal pesoKg;
+    @Column(name = "peso_kg")
+    private Double pesoKg;
 
     @Column(precision = 5, scale = 2)
     private BigDecimal imc;
@@ -71,8 +77,8 @@ public class Alumno extends AuditableEntity {
     public String getEmail() { return email; }
     public LocalDate getFechaNacimiento() { return fechaNacimiento; }
     public Genero getGenero() { return genero; }
-    public BigDecimal getEstaturaCm() { return estaturaCm; }
-    public BigDecimal getPesoKg() { return pesoKg; }
+    public Double getEstaturaCm() { return estaturaCm; }
+    public Double getPesoKg() { return pesoKg; }
     public BigDecimal getImc() { return imc; }
     public EstadoAlumno getEstado() { return estado; }
     public LocalDate getFechaIngreso() { return fechaIngreso; }
@@ -87,11 +93,19 @@ public class Alumno extends AuditableEntity {
     public void setEmail(String email) { this.email = email; }
     public void setFechaNacimiento(LocalDate fechaNacimiento) { this.fechaNacimiento = fechaNacimiento; }
     public void setGenero(Genero genero) { this.genero = genero; }
-    public void setEstaturaCm(BigDecimal estaturaCm) { this.estaturaCm = estaturaCm; }
-    public void setPesoKg(BigDecimal pesoKg) { this.pesoKg = pesoKg; }
+    public void setEstaturaCm(Double estaturaCm) { this.estaturaCm = estaturaCm; }
+    public void setPesoKg(Double pesoKg) { this.pesoKg = pesoKg; }
     public void setImc(BigDecimal imc) { this.imc = imc; }
     public void setEstado(EstadoAlumno estado) { this.estado = estado; }
     public void setFechaIngreso(LocalDate fechaIngreso) { this.fechaIngreso = fechaIngreso; }
     public void setFechaSalida(LocalDate fechaSalida) { this.fechaSalida = fechaSalida; }
     public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
+
+    public String getCedula() {
+        return cedula;
+    }
+
+    public void setCedula(String cedula) {
+        this.cedula = cedula;
+    }
 }
