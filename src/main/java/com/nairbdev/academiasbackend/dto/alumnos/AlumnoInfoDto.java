@@ -1,10 +1,11 @@
-package com.nairbdev.academiasbackend.dto;
+package com.nairbdev.academiasbackend.dto.alumnos;
 
 import com.nairbdev.academiasbackend.entity.EstadoAlumno;
 
 import java.time.LocalDate;
 
 public record AlumnoInfoDto(
+        Long id,
         String academiaNombre,
         String apellidos,
         String nombres,

@@ -1,6 +1,8 @@
 package com.nairbdev.academiasbackend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +45,7 @@ public class Alumno extends AuditableEntity {
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "genero")
     private Genero genero;
@@ -56,8 +59,9 @@ public class Alumno extends AuditableEntity {
     @Column(precision = 5, scale = 2)
     private BigDecimal imc;
 
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "estado_alumno")
+    @Column(name = "estado", nullable = false, columnDefinition = "estado_alumno")
     private EstadoAlumno estado = EstadoAlumno.ACTIVO;
 
     @Column(name = "fecha_ingreso")

@@ -227,3 +227,12 @@ CREATE TABLE resultado_academico (
 CREATE INDEX idx_ra_jornada ON resultado_academico(jornada_academica_id);
 
 
+-- 1) Quitar unique de cedula (ajusta el nombre del constraint/index)
+ALTER TABLE alumno DROP CONSTRAINT IF EXISTS alumno_cedula_key;
+
+-- 2) Crear unique compuesto por academia + cedula
+ALTER TABLE alumno
+    ADD CONSTRAINT uq_alumno_academia_cedula UNIQUE (academia_id, cedula);
+
+-- Recomendado para búsquedas
+CREATE INDEX IF NOT EXISTS idx_alumno_academia_cedula ON alumno(academia_id, cedula);
