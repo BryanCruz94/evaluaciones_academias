@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface ProgramaRepository extends JpaRepository<Programa, Long> {
 
-    List<Programa> findByAcademiaId(Long academiaId);
+    List<Programa> findByAcademiaIdAndActivoTrue(Long academiaId);
 
 }
