@@ -5,5 +5,6 @@ public record ProgramaResponseDTO(
         String academiaNombre,
         String nombre,
         String descripcion,
+        String genero,
         Boolean activo
 ) {}

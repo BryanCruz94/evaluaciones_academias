@@ -1,6 +1,8 @@
 package com.nairbdev.academiasbackend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -40,9 +42,6 @@ public class ProgramaPruebaFisica extends AuditableEntity {
     @Column(length = 80)
     private String etiqueta;
 
-    @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "genero")
-    private Genero genero; // null = ambos
 
     @Column(nullable = false)
     private Boolean activo = true;
@@ -54,7 +53,6 @@ public class ProgramaPruebaFisica extends AuditableEntity {
     public BigDecimal getObjetivoValor() { return objetivoValor; }
     public OperadorObjetivo getOperador() { return operador; }
     public String getEtiqueta() { return etiqueta; }
-    public Genero getGenero() { return genero; }
     public Boolean getActivo() { return activo; }
 
     public void setId(Long id) { this.id = id; }
@@ -64,6 +62,5 @@ public class ProgramaPruebaFisica extends AuditableEntity {
     public void setObjetivoValor(BigDecimal objetivoValor) { this.objetivoValor = objetivoValor; }
     public void setOperador(OperadorObjetivo operador) { this.operador = operador; }
     public void setEtiqueta(String etiqueta) { this.etiqueta = etiqueta; }
-    public void setGenero(Genero genero) { this.genero = genero; }
     public void setActivo(Boolean activo) { this.activo = activo; }
 }

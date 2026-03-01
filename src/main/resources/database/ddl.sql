@@ -47,12 +47,15 @@ CREATE TABLE programa (
                           academia_id   BIGINT NOT NULL REFERENCES academia(id) ON DELETE RESTRICT,
                           nombre        VARCHAR(150) NOT NULL,
                           descripcion   TEXT,
+                          genero        genero NULL, -- ✅ movido aquí
                           activo        BOOLEAN NOT NULL DEFAULT TRUE,
                           created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                           updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
                           CONSTRAINT uq_programa_nombre UNIQUE (academia_id, nombre)
 );
+
+CREATE INDEX idx_programa_academia ON programa(academia_id);
 
 CREATE INDEX idx_programa_academia ON programa(academia_id);
 
@@ -112,13 +115,12 @@ CREATE TABLE programa_prueba_fisica (
                                         objetivo_valor      NUMERIC(12,2),
                                         operador            operador_objetivo,
                                         etiqueta            VARCHAR(80),
-                                        genero              genero,
                                         activo              BOOLEAN NOT NULL DEFAULT TRUE,
                                         created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                         updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-                                        CONSTRAINT uq_programa_prueba_genero
-                                            UNIQUE (programa_id, prueba_fisica_id, genero),
+    -- ✅ UNIQUE más coherente para que no repitas la misma prueba en el mismo programa
+                                        CONSTRAINT uq_programa_prueba UNIQUE (programa_id, prueba_fisica_id),
 
                                         CONSTRAINT chk_objetivo_operador
                                             CHECK (

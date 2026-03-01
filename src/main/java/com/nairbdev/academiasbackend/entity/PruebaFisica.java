@@ -1,6 +1,8 @@
 package com.nairbdev.academiasbackend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -22,6 +24,7 @@ public class PruebaFisica extends AuditableEntity {
     private String nombre;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "tipo_valor", nullable = false, columnDefinition = "tipo_valor_prueba")
     private TipoValorPrueba tipoValor;
 

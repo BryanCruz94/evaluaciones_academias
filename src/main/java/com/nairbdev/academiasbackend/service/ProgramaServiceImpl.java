@@ -4,6 +4,7 @@ import com.nairbdev.academiasbackend.dto.programas.ProgramaResponseDTO;
 import com.nairbdev.academiasbackend.dto.programas.ProgramaCreateDTO;
 import com.nairbdev.academiasbackend.dto.programas.ProgramaUpdateDTO;
 import com.nairbdev.academiasbackend.entity.Academia;
+import com.nairbdev.academiasbackend.entity.Genero;
 import com.nairbdev.academiasbackend.entity.Programa;
 import com.nairbdev.academiasbackend.repository.ProgramaRepository;
 import com.nairbdev.academiasbackend.repository.AcademiaRepository;
@@ -43,6 +44,7 @@ public class ProgramaServiceImpl implements ProgramaService {
                 (p.getAcademia() != null) ? p.getAcademia().getNombre() : null,
                 p.getNombre(),
                 p.getDescripcion(),
+                p.getGenero(Genero.M).name(),
                 p.getActivo()
         );
     }
@@ -55,11 +57,13 @@ public class ProgramaServiceImpl implements ProgramaService {
                         HttpStatus.NOT_FOUND,
                         "No existe la academia con id: " + academiaId
                 ));
+        Genero genero = Genero.valueOf(dto.genero());
 
         Programa programa = new Programa();
         programa.setAcademia(academia);
         programa.setNombre(dto.nombre());
         programa.setDescripcion(dto.descripcion());
+        programa.setGenero(genero);
         programa.setActivo(dto.activo() != null ? dto.activo() : true);
 
         Programa saved = programaRepository.save(programa);
@@ -69,6 +73,7 @@ public class ProgramaServiceImpl implements ProgramaService {
                 saved.getAcademia() != null ? saved.getAcademia().getNombre() : null,
                 saved.getNombre(),
                 saved.getDescripcion(),
+                saved.getGenero(genero).name(),
                 saved.getActivo()
         );
     }
@@ -93,11 +98,14 @@ public class ProgramaServiceImpl implements ProgramaService {
 
         Programa saved = programaRepository.save(programa);
 
+        Genero genero = Genero.valueOf(dto.genero());
+
         return new ProgramaResponseDTO(
                 saved.getId(),
                 saved.getAcademia() != null ? saved.getAcademia().getNombre() : null,
                 saved.getNombre(),
                 saved.getDescripcion(),
+                saved.getGenero(genero).name(),
                 saved.getActivo()
         );
     }

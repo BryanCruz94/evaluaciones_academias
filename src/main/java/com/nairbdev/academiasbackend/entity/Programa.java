@@ -1,6 +1,8 @@
 package com.nairbdev.academiasbackend.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -27,6 +29,11 @@ public class Programa extends AuditableEntity {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "genero")
+    private Genero genero;
+
     public Long getId() { return id; }
     public Academia getAcademia() { return academia; }
     public String getNombre() { return nombre; }
@@ -38,4 +45,7 @@ public class Programa extends AuditableEntity {
     public void setNombre(String nombre) { this.nombre = nombre; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     public void setActivo(Boolean activo) { this.activo = activo; }
+
+    public Genero getGenero(Genero genero) { return this.genero; }
+    public void setGenero(Genero genero) { this.genero = genero; }
 }
