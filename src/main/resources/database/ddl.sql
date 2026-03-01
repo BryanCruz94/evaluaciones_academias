@@ -1,13 +1,11 @@
+-- ENUMS
 CREATE TYPE rol_usuario AS ENUM ('SUPER_ADMIN', 'EVALUADOR');
-
 CREATE TYPE genero AS ENUM ('M', 'F');
-
 CREATE TYPE estado_alumno AS ENUM ('ACTIVO', 'BAJA', 'GRADUADO', 'REINGRESO');
-
 CREATE TYPE tipo_valor_prueba AS ENUM ('TIEMPO', 'REPETICIONES', 'BOOLEANO', 'NUMERICO');
-
 CREATE TYPE operador_objetivo AS ENUM ('>=', '<=', '=');
 
+-- TABLAS
 
 CREATE TABLE academia (
                           id            BIGSERIAL PRIMARY KEY,
@@ -17,8 +15,6 @@ CREATE TABLE academia (
                           created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                           updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-
 
 CREATE TABLE usuario (
                          id            BIGSERIAL PRIMARY KEY,
@@ -41,13 +37,12 @@ CREATE TABLE usuario (
 
 CREATE INDEX idx_usuario_academia ON usuario(academia_id);
 
-
 CREATE TABLE programa (
                           id            BIGSERIAL PRIMARY KEY,
                           academia_id   BIGINT NOT NULL REFERENCES academia(id) ON DELETE RESTRICT,
                           nombre        VARCHAR(150) NOT NULL,
                           descripcion   TEXT,
-                          genero        genero NULL, -- ✅ movido aquí
+                          genero        genero NULL, -- género a nivel de programa (si aplica)
                           activo        BOOLEAN NOT NULL DEFAULT TRUE,
                           created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                           updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -56,9 +51,6 @@ CREATE TABLE programa (
 );
 
 CREATE INDEX idx_programa_academia ON programa(academia_id);
-
-CREATE INDEX idx_programa_academia ON programa(academia_id);
-
 
 CREATE TABLE alumno (
                         id                  BIGSERIAL PRIMARY KEY,
@@ -69,11 +61,11 @@ CREATE TABLE alumno (
                         apellidos           VARCHAR(150) NOT NULL,
                         email               VARCHAR(254),
                         fecha_nacimiento    DATE,
-                        cedula              VARCHAR(10) UNIQUE,
+                        cedula              VARCHAR(10),
 
                         genero              genero NOT NULL,
-                        estatura_cm         double,
-                        peso_kg             double,
+                        estatura_cm         DOUBLE PRECISION,
+                        peso_kg             DOUBLE PRECISION,
                         imc                 NUMERIC(5,2),
 
                         estado              estado_alumno NOT NULL DEFAULT 'ACTIVO',
@@ -85,12 +77,14 @@ CREATE TABLE alumno (
                         created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                         updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-                        CONSTRAINT uq_alumno_email UNIQUE (academia_id, email)
+                        CONSTRAINT uq_alumno_email UNIQUE (academia_id, email),
+                        CONSTRAINT uq_alumno_academia_cedula UNIQUE (academia_id, cedula)
 );
 
 CREATE INDEX idx_alumno_academia ON alumno(academia_id);
+CREATE INDEX idx_alumno_academia_cedula ON alumno(academia_id, cedula);
 
-
+-- Catálogo de pruebas físicas por academia (se mantiene)
 CREATE TABLE prueba_fisica (
                                id            BIGSERIAL PRIMARY KEY,
                                academia_id   BIGINT NOT NULL REFERENCES academia(id) ON DELETE RESTRICT,
@@ -106,20 +100,22 @@ CREATE TABLE prueba_fisica (
 
 CREATE INDEX idx_prueba_fisica_academia ON prueba_fisica(academia_id);
 
-
+-- Asignación de pruebas físicas a un programa
+-- (SIN género, SIN constraint por género)
+-- (SIN duplicados por programa+prueba, como acordaste)
 CREATE TABLE programa_prueba_fisica (
                                         id                  BIGSERIAL PRIMARY KEY,
                                         programa_id         BIGINT NOT NULL REFERENCES programa(id) ON DELETE RESTRICT,
                                         prueba_fisica_id    BIGINT NOT NULL REFERENCES prueba_fisica(id) ON DELETE RESTRICT,
-                                        orden               INT NOT NULL CHECK (orden > 0),
+
                                         objetivo_valor      NUMERIC(12,2),
                                         operador            operador_objetivo,
                                         etiqueta            VARCHAR(80),
+
                                         activo              BOOLEAN NOT NULL DEFAULT TRUE,
                                         created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                         updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    -- ✅ UNIQUE más coherente para que no repitas la misma prueba en el mismo programa
                                         CONSTRAINT uq_programa_prueba UNIQUE (programa_id, prueba_fisica_id),
 
                                         CONSTRAINT chk_objetivo_operador
@@ -131,7 +127,6 @@ CREATE TABLE programa_prueba_fisica (
 );
 
 CREATE INDEX idx_ppf_programa ON programa_prueba_fisica(programa_id);
-
 
 CREATE TABLE jornada_fisica (
                                 id            BIGSERIAL PRIMARY KEY,
@@ -151,23 +146,20 @@ CREATE TABLE jornada_fisica (
 
 CREATE INDEX idx_jf_programa_fecha ON jornada_fisica(programa_id, fecha);
 
-
 CREATE TABLE resultado_fisico (
-                                  id                    BIGSERIAL PRIMARY KEY,
-                                  jornada_fisica_id     BIGINT NOT NULL REFERENCES jornada_fisica(id) ON DELETE CASCADE,
-                                  prueba_fisica_id      BIGINT NOT NULL REFERENCES prueba_fisica(id) ON DELETE RESTRICT,
-                                  valor_num             NUMERIC(12,2),
-                                  valor_bool            BOOLEAN,
-                                  observacion           TEXT,
-                                  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                                  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                  id                        BIGSERIAL PRIMARY KEY,
+                                  jornada_fisica_id         BIGINT NOT NULL REFERENCES jornada_fisica(id) ON DELETE CASCADE,
+                                  programa_prueba_fisica_id BIGINT NOT NULL REFERENCES programa_prueba_fisica(id) ON DELETE RESTRICT,
+                                  valor_num                 NUMERIC(12,2),
+                                  valor_bool                BOOLEAN,
+                                  observacion               TEXT,
+                                  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-                                  CONSTRAINT uq_resultado_fisico
-                                      UNIQUE (jornada_fisica_id, prueba_fisica_id)
+                                  CONSTRAINT uq_resultado_fisico UNIQUE (jornada_fisica_id, programa_prueba_fisica_id)
 );
 
 CREATE INDEX idx_rf_jornada ON resultado_fisico(jornada_fisica_id);
-
 
 CREATE TABLE materia (
                          id            BIGSERIAL PRIMARY KEY,
@@ -180,7 +172,6 @@ CREATE TABLE materia (
                          CONSTRAINT uq_materia_nombre UNIQUE (academia_id, nombre)
 );
 
-
 CREATE TABLE programa_materia (
                                   id            BIGSERIAL PRIMARY KEY,
                                   programa_id   BIGINT NOT NULL REFERENCES programa(id) ON DELETE RESTRICT,
@@ -191,10 +182,8 @@ CREATE TABLE programa_materia (
                                   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-                                  CONSTRAINT uq_programa_materia
-                                      UNIQUE (programa_id, materia_id)
+                                  CONSTRAINT uq_programa_materia UNIQUE (programa_id, materia_id)
 );
-
 
 CREATE TABLE jornada_academica (
                                    id            BIGSERIAL PRIMARY KEY,
@@ -212,7 +201,6 @@ CREATE TABLE jornada_academica (
 
 CREATE INDEX idx_ja_programa_fecha ON jornada_academica(programa_id, fecha);
 
-
 CREATE TABLE resultado_academico (
                                      id                      BIGSERIAL PRIMARY KEY,
                                      jornada_academica_id    BIGINT NOT NULL REFERENCES jornada_academica(id) ON DELETE CASCADE,
@@ -222,19 +210,7 @@ CREATE TABLE resultado_academico (
                                      created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                      updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-                                     CONSTRAINT uq_resultado_academico
-                                         UNIQUE (jornada_academica_id, materia_id)
+                                     CONSTRAINT uq_resultado_academico UNIQUE (jornada_academica_id, materia_id)
 );
 
 CREATE INDEX idx_ra_jornada ON resultado_academico(jornada_academica_id);
-
-
--- 1) Quitar unique de cedula (ajusta el nombre del constraint/index)
-ALTER TABLE alumno DROP CONSTRAINT IF EXISTS alumno_cedula_key;
-
--- 2) Crear unique compuesto por academia + cedula
-ALTER TABLE alumno
-    ADD CONSTRAINT uq_alumno_academia_cedula UNIQUE (academia_id, cedula);
-
--- Recomendado para búsquedas
-CREATE INDEX IF NOT EXISTS idx_alumno_academia_cedula ON alumno(academia_id, cedula);

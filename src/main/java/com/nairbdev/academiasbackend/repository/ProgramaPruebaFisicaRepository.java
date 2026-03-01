@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public interface ProgramaPruebaFisicaRepository extends JpaRepository<ProgramaPruebaFisica, Long> {
 
+    List<ProgramaPruebaFisica> findByProgramaIdAndActivoTrueOrderByIdAsc(Long programaId);
 
-
+    Optional<ProgramaPruebaFisica> findByIdAndProgramaId(Long id, Long programaId);
 }

@@ -1,13 +1,15 @@
 package com.nairbdev.academiasbackend.entity;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 
 @Entity
 @Table(
         name = "resultado_fisico",
-        uniqueConstraints = @UniqueConstraint(name = "uq_resultado_fisico", columnNames = {"jornada_fisica_id", "prueba_fisica_id"}),
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_resultado_fisico",
+                columnNames = {"jornada_fisica_id", "programa_prueba_fisica_id"}
+        ),
         indexes = @Index(name = "idx_rf_jornada", columnList = "jornada_fisica_id")
 )
 public class ResultadoFisico extends AuditableEntity {
@@ -20,9 +22,10 @@ public class ResultadoFisico extends AuditableEntity {
     @JoinColumn(name = "jornada_fisica_id", nullable = false)
     private JornadaFisica jornadaFisica;
 
+    // 🔥 CAMBIO IMPORTANTE
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "prueba_fisica_id", nullable = false)
-    private PruebaFisica pruebaFisica;
+    @JoinColumn(name = "programa_prueba_fisica_id", nullable = false)
+    private ProgramaPruebaFisica programaPruebaFisica;
 
     @Column(name = "valor_num", precision = 12, scale = 2)
     private BigDecimal valorNum;
@@ -30,19 +33,21 @@ public class ResultadoFisico extends AuditableEntity {
     @Column(name = "valor_bool")
     private Boolean valorBool;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
+
+    // Getters y setters
 
     public Long getId() { return id; }
     public JornadaFisica getJornadaFisica() { return jornadaFisica; }
-    public PruebaFisica getPruebaFisica() { return pruebaFisica; }
+    public ProgramaPruebaFisica getProgramaPruebaFisica() { return programaPruebaFisica; }
     public BigDecimal getValorNum() { return valorNum; }
     public Boolean getValorBool() { return valorBool; }
     public String getObservacion() { return observacion; }
 
     public void setId(Long id) { this.id = id; }
     public void setJornadaFisica(JornadaFisica jornadaFisica) { this.jornadaFisica = jornadaFisica; }
-    public void setPruebaFisica(PruebaFisica pruebaFisica) { this.pruebaFisica = pruebaFisica; }
+    public void setProgramaPruebaFisica(ProgramaPruebaFisica programaPruebaFisica) { this.programaPruebaFisica = programaPruebaFisica; }
     public void setValorNum(BigDecimal valorNum) { this.valorNum = valorNum; }
     public void setValorBool(Boolean valorBool) { this.valorBool = valorBool; }
     public void setObservacion(String observacion) { this.observacion = observacion; }
