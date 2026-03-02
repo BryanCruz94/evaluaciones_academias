@@ -16,8 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,8 @@ public class ProgramaPruebaFisicaService {
 
     @Transactional(readOnly = true)
     public List<ProgramaPruebaFisicaResponseDTO> listarActivas(Long academiaId, Long programaId) {
+
+        // valida que el programa exista y pertenezca a la academia
         Programa programa = validarPrograma(academiaId, programaId);
 
         return repo.findByProgramaIdAndActivoTrueOrderByIdAsc(programa.getId())
@@ -37,28 +40,53 @@ public class ProgramaPruebaFisicaService {
     }
 
     @Transactional
-    public List<ProgramaPruebaFisicaResponseDTO> guardarBulk(Long academiaId, Long programaId, ProgramaPruebasFisicasBulkSaveRequest request) {
+    public List<ProgramaPruebaFisicaResponseDTO> guardarBulk(
+            Long academiaId,
+            Long programaId,
+            ProgramaPruebasFisicasBulkSaveRequest request
+    ) {
         Programa programa = validarPrograma(academiaId, programaId);
 
         if (request == null || request.items() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "items es obligatorio.");
         }
 
-        List<ProgramaPruebaFisicaResponseDTO> out = new ArrayList<>();
+        // 1) Trae todas las pruebas existentes del programa (activos e inactivos)
+        List<ProgramaPruebaFisica> existentes = repo.findByProgramaId(programaId);
 
+        // 2) Mapa para resolver rápido updates por id
+        Map<Long, ProgramaPruebaFisica> existentesPorId = existentes.stream()
+                .filter(e -> e.getId() != null)
+                .collect(Collectors.toMap(ProgramaPruebaFisica::getId, Function.identity()));
+
+        // 3) IDs que el front mantiene (los que vienen en request con id != null)
+        //    Si el front eliminó una prueba, su id no estará aquí.
+        Set<Long> idsEntrantes = request.items().stream()
+                .map(ProgramaPruebaFisicaItemDTO::id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<ProgramaPruebaFisica> toSave = new ArrayList<>();
+
+        // 4) Crear / actualizar según id
         for (ProgramaPruebaFisicaItemDTO item : request.items()) {
             validarItem(item);
 
             ProgramaPruebaFisica entity;
+
             if (item.id() == null) {
+                // nueva
                 entity = new ProgramaPruebaFisica();
                 entity.setPrograma(programa);
             } else {
-                entity = repo.findByIdAndProgramaId(item.id(), programa.getId())
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "No existe una prueba con id " + item.id() + " para este programa."
-                        ));
+                // update existente (y debe pertenecer al programa)
+                entity = existentesPorId.get(item.id());
+                if (entity == null) {
+                    throw new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "No existe una prueba con id " + item.id() + " para este programa."
+                    );
+                }
             }
 
             entity.setNombre(item.nombre().trim());
@@ -66,17 +94,18 @@ public class ProgramaPruebaFisicaService {
             entity.setTipoValor(item.tipoValor());
             entity.setUnidad(item.unidad());
 
-            // ✅ normaliza objetivo según tipo
             NormalizedGoal ng = normalizeGoal(item);
-
             entity.setObjetivoValor(ng.objetivoValor());
-            entity.setOperador(ng.operadorFinal()); // puede venir forzado (BOOLEANO)
+            entity.setOperador(ng.operadorFinal()); // puede ser forzado por BOOLEANO en tu normalize
             entity.setEtiqueta(item.etiqueta());
+
+            // si el front no manda activo, asumimos true
             entity.setActivo(item.activo() != null ? item.activo() : true);
 
-            // regla: objetivoValor y operador deben venir ambos o ambos null
+            // regla objetivoValor-operador coherentes
             boolean ok = (entity.getObjetivoValor() == null && entity.getOperador() == null)
                     || (entity.getObjetivoValor() != null && entity.getOperador() != null);
+
             if (!ok) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
@@ -84,11 +113,25 @@ public class ProgramaPruebaFisicaService {
                 );
             }
 
-            ProgramaPruebaFisica saved = repo.save(entity);
-            out.add(toDto(saved));
+            toSave.add(entity);
         }
 
-        return out;
+        // 5) Desactivar los que existían (activos) y ya no vienen en request (el usuario los quitó)
+        //    OJO: a los nuevos (id=null) no les afecta porque no están en BD todavía.
+        List<ProgramaPruebaFisica> toDeactivate = existentes.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getActivo()))
+                .filter(e -> !idsEntrantes.contains(e.getId()))
+                .peek(e -> e.setActivo(false))
+                .toList();
+
+        // 6) Guardar en BD
+        repo.saveAll(toSave);
+        repo.saveAll(toDeactivate);
+
+        // 7) Respuesta: devuelve el estado final (solo activos)
+        return repo.findByProgramaIdAndActivoTrue(programaId).stream()
+                .map(this::toDto)
+                .toList();
     }
 
     @Transactional
