@@ -9,8 +9,7 @@ import java.math.BigDecimal;
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_resultado_fisico",
                 columnNames = {"jornada_fisica_id", "programa_prueba_fisica_id"}
-        ),
-        indexes = @Index(name = "idx_rf_jornada", columnList = "jornada_fisica_id")
+        )
 )
 public class ResultadoFisico extends AuditableEntity {
 
@@ -22,7 +21,6 @@ public class ResultadoFisico extends AuditableEntity {
     @JoinColumn(name = "jornada_fisica_id", nullable = false)
     private JornadaFisica jornadaFisica;
 
-    // 🔥 CAMBIO IMPORTANTE
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "programa_prueba_fisica_id", nullable = false)
     private ProgramaPruebaFisica programaPruebaFisica;
@@ -33,10 +31,8 @@ public class ResultadoFisico extends AuditableEntity {
     @Column(name = "valor_bool")
     private Boolean valorBool;
 
-    @Column(name = "observacion", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String observacion;
-
-    // Getters y setters
 
     public Long getId() { return id; }
     public JornadaFisica getJornadaFisica() { return jornadaFisica; }
@@ -47,7 +43,7 @@ public class ResultadoFisico extends AuditableEntity {
 
     public void setId(Long id) { this.id = id; }
     public void setJornadaFisica(JornadaFisica jornadaFisica) { this.jornadaFisica = jornadaFisica; }
-    public void setProgramaPruebaFisica(ProgramaPruebaFisica programaPruebaFisica) { this.programaPruebaFisica = programaPruebaFisica; }
+    public void setProgramaPruebaFisica(ProgramaPruebaFisica ppf) { this.programaPruebaFisica = ppf; }
     public void setValorNum(BigDecimal valorNum) { this.valorNum = valorNum; }
     public void setValorBool(Boolean valorBool) { this.valorBool = valorBool; }
     public void setObservacion(String observacion) { this.observacion = observacion; }

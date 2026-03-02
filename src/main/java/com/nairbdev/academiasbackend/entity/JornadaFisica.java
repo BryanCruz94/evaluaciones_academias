@@ -8,8 +8,7 @@ import java.time.LocalDate;
 @Entity
 @Table(
         name = "jornada_fisica",
-        uniqueConstraints = @UniqueConstraint(name = "uq_jornada_fisica", columnNames = {"alumno_id", "fecha"}),
-        indexes = @Index(name = "idx_jf_programa_fecha", columnList = "programa_id,fecha")
+        uniqueConstraints = @UniqueConstraint(name = "uq_jornada_fisica", columnNames = {"alumno_id", "fecha"})
 )
 public class JornadaFisica extends AuditableEntity {
 
@@ -36,7 +35,7 @@ public class JornadaFisica extends AuditableEntity {
     @JoinColumn(name = "evaluador_id", nullable = false)
     private Usuario evaluador;
 
-    @Column(columnDefinition = "text")
+    @Column(columnDefinition = "TEXT")
     private String observacion;
 
     @Column(name = "peso_kg", precision = 4, scale = 2)

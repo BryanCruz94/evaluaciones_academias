@@ -1,11 +1,13 @@
 package com.nairbdev.academiasbackend.service;
 
 import com.nairbdev.academiasbackend.dto.alumnos.AlumnoInfoDto;
+import com.nairbdev.academiasbackend.dto.alumnos.AlumnoPruebaFisicaDto;
 import com.nairbdev.academiasbackend.dto.alumnos.AlumnoUpdateDto;
 import com.nairbdev.academiasbackend.dto.alumnos.AlumnosListDto;
 import com.nairbdev.academiasbackend.entity.*;
 import com.nairbdev.academiasbackend.repository.AcademiaRepository;
 import com.nairbdev.academiasbackend.repository.AlumnoRepository;
+import com.nairbdev.academiasbackend.repository.ProgramaPruebaFisicaRepository;
 import com.nairbdev.academiasbackend.repository.ProgramaRepository;
 import com.nairbdev.academiasbackend.utils.ImageUtils;
 import org.springframework.http.HttpStatus;
@@ -29,15 +31,18 @@ public class AlumnoService {
     private final AcademiaRepository academiaRepo;
     private final ProgramaRepository programaRepo;
     private final CloudinaryService cloudinaryService;
+    private final ProgramaPruebaFisicaRepository programaPruebaFisicaRepository;
 
     public AlumnoService(AlumnoRepository alumnoRepo,
                          AcademiaRepository academiaRepo,
                          ProgramaRepository programaRepo,
-                         CloudinaryService cloudinaryService) {
+                         CloudinaryService cloudinaryService,
+                         ProgramaPruebaFisicaRepository programaPruebaFisicaRepository) {
         this.alumnoRepo = alumnoRepo;
         this.academiaRepo = academiaRepo;
         this.programaRepo = programaRepo;
         this.cloudinaryService = cloudinaryService;
+        this.programaPruebaFisicaRepository = programaPruebaFisicaRepository;
     }
 
     // Devuelve lista general de alumnos (para tablas/listados)
@@ -237,6 +242,48 @@ public class AlumnoService {
                 programaNombre,
                 a.getEstado()
         );
+    }
+
+    //Metodo para mostrar las pruebas físicas que debe dar un alumno por su programa
+    public List<AlumnoPruebaFisicaDto> obtenerPruebasFisicasPorAlumno(Long academiaId, Long alumnoId) {
+
+        Alumno alumno = alumnoRepo.findByIdConTodo(alumnoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no encontrado."));
+
+        // Validar que el alumno pertenezca a la academia del URL
+        if (!alumno.getAcademia().getId().equals(academiaId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no pertenece a la academia indicada.");
+        }
+
+        Programa programa = alumno.getProgramaActual();
+        if (programa == null) {
+            return null; // como pediste
+        }
+
+        // (Recomendado) validar coherencia: el programa del alumno también debe ser de la academia
+        if (!programa.getAcademia().getId().equals(academiaId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El programa actual del alumno no pertenece a la academia indicada.");
+        }
+
+        return programaPruebaFisicaRepository
+                .findByProgramaIdAndActivoTrueOrderByIdAsc(programa.getId())
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    private AlumnoPruebaFisicaDto toDto(ProgramaPruebaFisica e) {
+        AlumnoPruebaFisicaDto dto = new AlumnoPruebaFisicaDto();
+        dto.setId(e.getId());
+        dto.setNombre(e.getNombre());
+        dto.setDescripcion(e.getDescripcion());
+        dto.setTipoValor(e.getTipoValor());
+        dto.setUnidad(e.getUnidad());
+        dto.setOperador(e.getOperador());
+        dto.setObjetivoValor(e.getObjetivoValor());
+        dto.setEtiqueta(e.getEtiqueta());
+        return dto;
     }
 
     private AlumnosListDto toDtoList(Alumno a) {

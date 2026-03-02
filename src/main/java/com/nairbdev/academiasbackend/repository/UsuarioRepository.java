@@ -11,5 +11,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByAuth0Sub(String auth0Sub);
 
     List<Usuario> findByAcademiaId(Long academiaId);
+    Optional<Usuario> findByIdAndActivoTrue(Long id);
 
 }
