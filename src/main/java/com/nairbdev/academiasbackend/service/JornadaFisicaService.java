@@ -1,6 +1,10 @@
 package com.nairbdev.academiasbackend.service;
 
 import com.nairbdev.academiasbackend.dto.jornadaFisica.*;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaBateriaResumenDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaFilaDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaValorDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebasFisicasTablaAlumnoDTO;
 import com.nairbdev.academiasbackend.entity.*;
 import com.nairbdev.academiasbackend.repository.*;
 import org.springframework.http.HttpStatus;
@@ -12,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class JornadaFisicaService {
@@ -239,5 +244,140 @@ public class JornadaFisicaService {
         long min = s / 60;
         long sec = s % 60;
         return String.format("%02d:%02d", min, sec);
+    }
+
+    @Transactional(readOnly = true)
+    public PruebasFisicasTablaAlumnoDTO obtenerTablaBateriasPorAlumno(Long academiaId, Long alumnoId) {
+        Alumno alumno = alumnoRepository.findByIdConTodo(alumnoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no encontrado."));
+
+        if (!alumno.getAcademia().getId().equals(academiaId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no pertenece a la academia indicada.");
+        }
+
+        List<JornadaFisica> jornadas = jornadaFisicaRepository.findByAlumnoIdOrderByFechaDesc(alumnoId);
+        if (jornadas.isEmpty()) {
+            return new PruebasFisicasTablaAlumnoDTO(alumnoId, List.of(), List.of(), null, List.of(), List.of());
+        }
+
+        List<JornadaFisica> jornadasAsc = new ArrayList<>(jornadas);
+        jornadasAsc.sort(Comparator.comparing(JornadaFisica::getFecha));
+
+        List<Long> jornadaIds = jornadasAsc.stream().map(JornadaFisica::getId).toList();
+        Map<Long, List<ResultadoFisico>> resultadosPorJornada = resultadoFisicoRepository
+                .findByJornadaFisicaIdIn(jornadaIds)
+                .stream()
+                .collect(Collectors.groupingBy(r -> r.getJornadaFisica().getId()));
+
+        Map<Long, ProgramaPruebaFisica> pruebasMap = new LinkedHashMap<>();
+        for (List<ResultadoFisico> resultados : resultadosPorJornada.values()) {
+            resultados.stream()
+                    .sorted(Comparator.comparing(r -> r.getProgramaPruebaFisica().getId()))
+                    .forEach(r -> pruebasMap.putIfAbsent(r.getProgramaPruebaFisica().getId(), r.getProgramaPruebaFisica()));
+        }
+
+        List<Long> baterias = jornadaIds;
+        List<LocalDate> fechas = jornadasAsc.stream().map(JornadaFisica::getFecha).toList();
+
+        List<PruebaFisicaFilaDTO> filas = new ArrayList<>();
+        filas.add(new PruebaFisicaFilaDTO(
+                "Fecha",
+                null,
+                jornadasAsc.stream()
+                        .map(j -> new PruebaFisicaValorDTO(j.getId(), null, null, null, j.getFecha().toString()))
+                        .toList()
+        ));
+
+        List<ProgramaPruebaFisica> pruebasOrdenadas = new ArrayList<>(pruebasMap.values());
+        pruebasOrdenadas.sort(Comparator.comparing(ProgramaPruebaFisica::getId));
+
+        for (ProgramaPruebaFisica prueba : pruebasOrdenadas) {
+            List<PruebaFisicaValorDTO> valoresFila = new ArrayList<>();
+            for (JornadaFisica jornada : jornadasAsc) {
+                ResultadoFisico resultado = resultadosPorJornada.getOrDefault(jornada.getId(), List.of())
+                        .stream()
+                        .filter(r -> r.getProgramaPruebaFisica().getId().equals(prueba.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                valoresFila.add(new PruebaFisicaValorDTO(
+                        jornada.getId(),
+                        prueba.getObjetivoValor() != null ? prueba.getObjetivoValor().doubleValue() : null,
+                        resultado != null && resultado.getValorNum() != null ? resultado.getValorNum().doubleValue() : null,
+                        resultado != null ? resultado.getValorBool() : null,
+                        null
+                ));
+            }
+            filas.add(new PruebaFisicaFilaDTO(prueba.getNombre(), prueba.getUnidad(), valoresFila));
+        }
+
+        ProgramaPruebaFisica ultimaPrueba = pruebasOrdenadas.isEmpty() ? null : pruebasOrdenadas.get(pruebasOrdenadas.size() - 1);
+        List<PruebaFisicaBateriaResumenDTO> resumenFinal = new ArrayList<>();
+        if (ultimaPrueba != null) {
+            for (JornadaFisica jornada : jornadasAsc) {
+                ResultadoFisico ultimoResultado = resultadosPorJornada.getOrDefault(jornada.getId(), List.of())
+                        .stream()
+                        .filter(r -> r.getProgramaPruebaFisica().getId().equals(ultimaPrueba.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                Boolean aprobado = evaluarAprobacion(ultimaPrueba, ultimoResultado);
+                Double diferencia = calcularDiferencia(ultimaPrueba, ultimoResultado);
+
+                resumenFinal.add(new PruebaFisicaBateriaResumenDTO(
+                        jornada.getId(),
+                        Boolean.TRUE.equals(aprobado) ? "✓" : "X",
+                        aprobado,
+                        diferencia
+                ));
+            }
+        }
+
+        return new PruebasFisicasTablaAlumnoDTO(
+                alumnoId,
+                baterias,
+                fechas,
+                ultimaPrueba != null ? ultimaPrueba.getNombre() : null,
+                filas,
+                resumenFinal
+        );
+    }
+
+    private Boolean evaluarAprobacion(ProgramaPruebaFisica prueba, ResultadoFisico resultado) {
+        if (prueba == null || resultado == null) {
+            return false;
+        }
+        if (prueba.getTipoValor() == TipoValorPrueba.BOOLEANO) {
+            return Boolean.TRUE.equals(resultado.getValorBool());
+        }
+        if (prueba.getObjetivoValor() == null || resultado.getValorNum() == null) {
+            return false;
+        }
+        if (prueba.getOperador() == null) {
+            return false;
+        }
+
+        return switch (prueba.getOperador()) {
+            case GE -> resultado.getValorNum().compareTo(prueba.getObjetivoValor()) >= 0;
+            case LE -> resultado.getValorNum().compareTo(prueba.getObjetivoValor()) <= 0;
+            case EQ -> resultado.getValorNum().compareTo(prueba.getObjetivoValor()) == 0;
+        };
+    }
+
+    private Double calcularDiferencia(ProgramaPruebaFisica prueba, ResultadoFisico resultado) {
+        if (prueba == null || resultado == null || prueba.getObjetivoValor() == null || resultado.getValorNum() == null) {
+            return null;
+        }
+        if (prueba.getOperador() == null) {
+            return null;
+        }
+
+        BigDecimal diff = switch (prueba.getOperador()) {
+            case GE -> resultado.getValorNum().subtract(prueba.getObjetivoValor());
+            case LE -> prueba.getObjetivoValor().subtract(resultado.getValorNum());
+            case EQ -> BigDecimal.ZERO.subtract(resultado.getValorNum().subtract(prueba.getObjetivoValor()).abs());
+        };
+
+        return diff != null ? diff.setScale(2, RoundingMode.HALF_UP).doubleValue() : null;
     }
 }
