@@ -21,6 +21,5 @@ public record ProgramaPruebaFisicaResponseDTO(
         Boolean objetivoBooleano,
 
         OperadorObjetivo operador,
-        String etiqueta,
         Boolean activo
 ) {}

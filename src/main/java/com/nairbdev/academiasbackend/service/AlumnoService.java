@@ -282,7 +282,6 @@ public class AlumnoService {
         dto.setUnidad(e.getUnidad());
         dto.setOperador(e.getOperador());
         dto.setObjetivoValor(e.getObjetivoValor());
-        dto.setEtiqueta(e.getEtiqueta());
         return dto;
     }
 

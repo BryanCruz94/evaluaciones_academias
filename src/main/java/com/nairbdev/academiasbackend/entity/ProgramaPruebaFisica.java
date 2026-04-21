@@ -43,9 +43,6 @@ public class ProgramaPruebaFisica extends AuditableEntity {
     @Column(name = "operador", columnDefinition = "operador_objetivo")
     private OperadorObjetivo operador;
 
-    @Column(length = 80)
-    private String etiqueta;
-
     @Column(nullable = false)
     private Boolean activo = true;
 
@@ -111,14 +108,6 @@ public class ProgramaPruebaFisica extends AuditableEntity {
 
     public void setOperador(OperadorObjetivo operador) {
         this.operador = operador;
-    }
-
-    public String getEtiqueta() {
-        return etiqueta;
-    }
-
-    public void setEtiqueta(String etiqueta) {
-        this.etiqueta = etiqueta;
     }
 
     public Boolean getActivo() {

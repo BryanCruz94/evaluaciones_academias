@@ -97,7 +97,6 @@ public class ProgramaPruebaFisicaService {
             NormalizedGoal ng = normalizeGoal(item);
             entity.setObjetivoValor(ng.objetivoValor());
             entity.setOperador(ng.operadorFinal()); // puede ser forzado por BOOLEANO en tu normalize
-            entity.setEtiqueta(item.etiqueta());
 
             // si el front no manda activo, asumimos true
             entity.setActivo(item.activo() != null ? item.activo() : true);
@@ -151,7 +150,6 @@ public class ProgramaPruebaFisicaService {
 
         entity.setObjetivoValor(ng.objetivoValor());
         entity.setOperador(ng.operadorFinal());
-        entity.setEtiqueta(item.etiqueta());
 
         boolean ok = (entity.getObjetivoValor() == null && entity.getOperador() == null)
                 || (entity.getObjetivoValor() != null && entity.getOperador() != null);
@@ -333,7 +331,6 @@ public class ProgramaPruebaFisicaService {
                 tiempoFormateado,          // tiempo formateado
                 booleanoFormateado,        // booleano formateado
                 e.getOperador(),
-                e.getEtiqueta(),
                 e.getActivo()
         );
     }
