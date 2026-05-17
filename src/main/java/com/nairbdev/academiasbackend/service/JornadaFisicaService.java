@@ -1,6 +1,9 @@
 package com.nairbdev.academiasbackend.service;
 
 import com.nairbdev.academiasbackend.dto.jornadaFisica.*;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoAlumnoDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoCeldaDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoResponseDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaBateriaResumenDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaFilaDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaValorDTO;
@@ -341,6 +344,127 @@ public class JornadaFisicaService {
                 filas,
                 resumenFinal
         );
+    }
+
+    @Transactional(readOnly = true)
+    public ConsolidadoFisicoResponseDTO obtenerConsolidadoFisicoPorAcademia(Long academiaId) {
+        /*
+         * Bloque de carga base del consolidado.
+         * Se traen todas las jornadas fisicas de la academia con alumno y programa ya cargados,
+         * luego se agrupan los resultados y las pruebas activas por programa para evitar consultas
+         * repetidas mientras se arma la matriz de fechas vs. alumnos.
+         */
+        List<JornadaFisica> jornadas = jornadaFisicaRepository.findConsolidadoByAcademiaId(academiaId);
+        if (jornadas.isEmpty()) {
+            return new ConsolidadoFisicoResponseDTO(List.of(), List.of());
+        }
+
+        List<LocalDate> fechas = jornadas.stream()
+                .map(JornadaFisica::getFecha)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<Long> jornadaIds = jornadas.stream().map(JornadaFisica::getId).toList();
+        Map<Long, List<ResultadoFisico>> resultadosPorJornada = resultadoFisicoRepository
+                .findByJornadaFisicaIdIn(jornadaIds)
+                .stream()
+                .collect(Collectors.groupingBy(r -> r.getJornadaFisica().getId()));
+
+        Map<Long, List<ProgramaPruebaFisica>> pruebasActivasPorPrograma = jornadas.stream()
+                .map(j -> j.getPrograma().getId())
+                .distinct()
+                .collect(Collectors.toMap(
+                        programaId -> programaId,
+                        programaPruebaFisicaRepository::findByProgramaIdAndActivoTrueOrderByIdAsc
+                ));
+
+        /*
+         * Bloque de armado de filas.
+         * Cada alumno aparece una sola vez, ordenado alfabeticamente por apellidos y nombres.
+         * Para cada fecha se coloca Aprobado o No aprobado si existe una jornada del alumno en
+         * esa fecha; si no rindio evaluacion ese dia, la celda queda vacia para el frontend.
+         */
+        Map<Long, List<JornadaFisica>> jornadasPorAlumno = jornadas.stream()
+                .collect(Collectors.groupingBy(j -> j.getAlumno().getId()));
+
+        List<ConsolidadoFisicoAlumnoDTO> alumnos = jornadasPorAlumno.values().stream()
+                .map(alumnoJornadas -> {
+                    alumnoJornadas.sort(Comparator.comparing(JornadaFisica::getFecha));
+                    Alumno alumno = alumnoJornadas.get(0).getAlumno();
+
+                    Map<LocalDate, JornadaFisica> jornadaPorFecha = alumnoJornadas.stream()
+                            .collect(Collectors.toMap(JornadaFisica::getFecha, j -> j, (left, right) -> left));
+
+                    List<ConsolidadoFisicoCeldaDTO> evaluaciones = fechas.stream()
+                            .map(fecha -> {
+                                JornadaFisica jornada = jornadaPorFecha.get(fecha);
+                                if (jornada == null) {
+                                    return new ConsolidadoFisicoCeldaDTO(null, null, "");
+                                }
+
+                                Boolean aprobado = evaluarAprobacionJornadaCompleta(
+                                        pruebasActivasPorPrograma.getOrDefault(jornada.getPrograma().getId(), List.of()),
+                                        resultadosPorJornada.getOrDefault(jornada.getId(), List.of())
+                                );
+
+                                return new ConsolidadoFisicoCeldaDTO(
+                                        jornada.getId(),
+                                        aprobado,
+                                        Boolean.TRUE.equals(aprobado) ? "Aprobado" : "No aprobado"
+                                );
+                            })
+                            .toList();
+
+                    Programa programa = alumno.getProgramaActual() != null
+                            ? alumno.getProgramaActual()
+                            : alumnoJornadas.get(alumnoJornadas.size() - 1).getPrograma();
+
+                    return new ConsolidadoFisicoAlumnoDTO(
+                            alumno.getId(),
+                            alumno.getApellidos(),
+                            alumno.getNombres(),
+                            (alumno.getApellidos() + " " + alumno.getNombres()).trim(),
+                            evaluaciones,
+                            programa != null ? programa.getNombre() : "-"
+                    );
+                })
+                .sorted(Comparator
+                        .comparing(ConsolidadoFisicoAlumnoDTO::apellidos, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(ConsolidadoFisicoAlumnoDTO::nombres, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        return new ConsolidadoFisicoResponseDTO(fechas, alumnos);
+    }
+
+    private Boolean evaluarAprobacionJornadaCompleta(List<ProgramaPruebaFisica> pruebas,
+                                                     List<ResultadoFisico> resultados) {
+        /*
+         * Bloque de reglas de aprobacion.
+         * Una jornada solo aprueba si contiene resultado para todas las pruebas activas del
+         * programa y cada resultado cumple su objetivo. Esto evita marcar como aprobada una
+         * bateria incompleta o con una marca faltante.
+         */
+        if (pruebas == null || pruebas.isEmpty()) {
+            return false;
+        }
+
+        Map<Long, ResultadoFisico> resultadoPorPrueba = resultados.stream()
+                .filter(r -> r.getProgramaPruebaFisica() != null)
+                .collect(Collectors.toMap(
+                        r -> r.getProgramaPruebaFisica().getId(),
+                        r -> r,
+                        (left, right) -> left
+                ));
+
+        for (ProgramaPruebaFisica prueba : pruebas) {
+            ResultadoFisico resultado = resultadoPorPrueba.get(prueba.getId());
+            if (!Boolean.TRUE.equals(evaluarAprobacion(prueba, resultado))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private Boolean evaluarAprobacion(ProgramaPruebaFisica prueba, ResultadoFisico resultado) {

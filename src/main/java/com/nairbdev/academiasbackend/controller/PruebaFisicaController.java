@@ -1,5 +1,6 @@
 package com.nairbdev.academiasbackend.controller;
 
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoResponseDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebasFisicasTablaAlumnoDTO;
 import com.nairbdev.academiasbackend.service.JornadaFisicaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,15 @@ public class PruebaFisicaController {
             @PathVariable Long alumnoId
     ) {
         return jornadaFisicaService.obtenerTablaBateriasPorAlumno(academiaId, alumnoId);
+    }
+
+    @Operation(
+            summary = "Obtener consolidado fisico de alumnos por academia",
+            description = "Retorna alumnos en filas y fechas de evaluaciones fisicas en columnas, con el estado de aprobacion de cada jornada."
+    )
+    @GetMapping("/academia/{academiaId}/consolidado-pruebas-fisicas")
+    public ConsolidadoFisicoResponseDTO obtenerConsolidadoFisico(@PathVariable Long academiaId) {
+        return jornadaFisicaService.obtenerConsolidadoFisicoPorAcademia(academiaId);
     }
 
 }
