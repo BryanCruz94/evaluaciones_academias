@@ -45,6 +45,14 @@ public interface AlumnoRepository extends JpaRepository<Alumno, Long> {
     Optional<Alumno> findByAcademiaIdAndCedula(@Param("academiaId") Long academiaId,
                                                @Param("cedula") String cedula);
 
+    @Query("""
+            select a from Alumno a
+            join fetch a.academia
+            left join fetch a.programaActual
+            where a.cedula = :cedula
+            """)
+    List<Alumno> findByCedulaConTodo(@Param("cedula") String cedula);
+
     // Verifica duplicado dentro de la misma academia (uq: academia_id + cedula)
     boolean existsByAcademiaIdAndCedula(Long academiaId, String cedula);
 

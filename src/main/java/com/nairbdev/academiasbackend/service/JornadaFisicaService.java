@@ -4,6 +4,7 @@ import com.nairbdev.academiasbackend.dto.jornadaFisica.*;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoAlumnoDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoCeldaDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoResponseDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.AlumnoPublicoPruebasFisicasDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaBateriaResumenDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaFilaDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebaFisicaValorDTO;
@@ -435,6 +436,55 @@ public class JornadaFisicaService {
                 .toList();
 
         return new ConsolidadoFisicoResponseDTO(fechas, alumnos);
+    }
+
+    @Transactional(readOnly = true)
+    public AlumnoPublicoPruebasFisicasDTO obtenerMatrizFisicaPublicaPorCedula(String cedula) {
+        /*
+         * Bloque de resolucion publica por cedula.
+         * La consulta publica no recibe academia; por eso resolvemos globalmente.
+         * Si la cedula existe en mas de una academia, devolvemos 409 para no exponer
+         * ni mezclar datos de alumnos homonimos entre academias.
+         */
+        if (cedula == null || cedula.isBlank() || !cedula.matches("\\d{1,10}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cedula debe contener solo numeros y maximo 10 digitos.");
+        }
+
+        List<Alumno> alumnos = alumnoRepository.findByCedulaConTodo(cedula.trim());
+
+        if (alumnos.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe un alumno con la cedula indicada.");
+        }
+
+        if (alumnos.size() > 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Existe mas de un alumno con esta cedula. Se requiere identificar la academia.");
+        }
+
+        Alumno alumno = alumnos.get(0);
+        PruebasFisicasTablaAlumnoDTO pruebasFisicas = obtenerTablaBateriasPorAlumno(
+                alumno.getAcademia().getId(),
+                alumno.getId()
+        );
+
+        String generoTexto = alumno.getGenero() == null
+                ? null
+                : alumno.getGenero() == Genero.M ? "Masculino" : "Femenino";
+
+        return new AlumnoPublicoPruebasFisicasDTO(
+                alumno.getId(),
+                alumno.getNombres(),
+                alumno.getApellidos(),
+                alumno.getCedula(),
+                generoTexto,
+                alumno.getFechaNacimiento(),
+                alumno.getEstaturaCm(),
+                alumno.getPesoKg(),
+                alumno.getImc(),
+                alumno.getFotoUrl(),
+                alumno.getProgramaActual() != null ? alumno.getProgramaActual().getNombre() : null,
+                pruebasFisicas
+        );
     }
 
     private Boolean evaluarAprobacionJornadaCompleta(List<ProgramaPruebaFisica> pruebas,

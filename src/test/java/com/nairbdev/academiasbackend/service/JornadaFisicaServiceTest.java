@@ -1,15 +1,20 @@
 package com.nairbdev.academiasbackend.service;
 
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.AlumnoPublicoPruebasFisicasDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoResponseDTO;
 import com.nairbdev.academiasbackend.entity.*;
 import com.nairbdev.academiasbackend.repository.*;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +108,60 @@ class JornadaFisicaServiceTest {
 
         assertThat(consolidado.alumnos().get(0).evaluaciones().get(0).estado())
                 .isEqualTo("No aprobado");
+    }
+
+    @Test
+    void consultaPublicaPorCedulaRetornaAlumnoYMatrizSinExponerEmail() {
+        Academia academia = academia(1L);
+        Programa programa = programa(10L, academia, "Aspirantes Policia");
+        Alumno ana = alumno(100L, academia, programa, "Zambrano", "Ana");
+        ana.setCedula("0102030405");
+        ana.setFechaNacimiento(LocalDate.of(2010, 5, 20));
+        ana.setEstaturaCm(165.0);
+        ana.setPesoKg(62.5);
+        ana.setImc(new BigDecimal("22.96"));
+        ana.setFotoUrl("https://cdn.example.com/foto.jpg");
+
+        when(alumnoRepository.findByCedulaConTodo("0102030405")).thenReturn(List.of(ana));
+        when(alumnoRepository.findByIdConTodo(100L)).thenReturn(Optional.of(ana));
+        when(jornadaFisicaRepository.findByAlumnoIdOrderByFechaDesc(100L)).thenReturn(List.of());
+
+        AlumnoPublicoPruebasFisicasDTO response =
+                service.obtenerMatrizFisicaPublicaPorCedula("0102030405");
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.nombres()).isEqualTo("Ana");
+        assertThat(response.apellidos()).isEqualTo("Zambrano");
+        assertThat(response.cedula()).isEqualTo("0102030405");
+        assertThat(response.genero()).isEqualTo("Masculino");
+        assertThat(response.programaActual()).isEqualTo("Aspirantes Policia");
+        assertThat(response.pruebasFisicas().baterias()).isEmpty();
+    }
+
+    @Test
+    void consultaPublicaPorCedulaRetornaNotFoundSiNoExiste() {
+        when(alumnoRepository.findByCedulaConTodo("0102030405")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.obtenerMatrizFisicaPublicaPorCedula("0102030405"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, error ->
+                        assertThat(error.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void consultaPublicaPorCedulaRetornaConflictSiCedulaEstaDuplicada() {
+        Academia academiaUno = academia(1L);
+        Academia academiaDos = academia(2L);
+        Programa programaUno = programa(10L, academiaUno, "Programa Uno");
+        Programa programaDos = programa(20L, academiaDos, "Programa Dos");
+        Alumno alumnoUno = alumno(100L, academiaUno, programaUno, "Zambrano", "Ana");
+        Alumno alumnoDos = alumno(200L, academiaDos, programaDos, "Zambrano", "Ana");
+
+        when(alumnoRepository.findByCedulaConTodo("0102030405"))
+                .thenReturn(List.of(alumnoUno, alumnoDos));
+
+        assertThatThrownBy(() -> service.obtenerMatrizFisicaPublicaPorCedula("0102030405"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, error ->
+                        assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
 
     private Academia academia(Long id) {
