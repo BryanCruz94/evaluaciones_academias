@@ -47,15 +47,16 @@ public class PruebaFisicaController {
     @GetMapping("/verificar-pruebas-fisicas/cedula/{cedula}")
     public AlumnoPublicoPruebasFisicasDTO verificarPruebasFisicasPorCedula(
             @PathVariable String cedula,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = "X-User-Name", required = false) String nombreUsuario
     ) {
         return jornadaFisicaService.obtenerMatrizFisicaAuditadaPorCedula(
                 cedula,
-                obtenerNombreConsultor(jwt)
+                obtenerNombreConsultor(jwt, nombreUsuario)
         );
     }
 
-    private String obtenerNombreConsultor(Jwt jwt) {
+    private String obtenerNombreConsultor(Jwt jwt, String nombreUsuario) {
         if (jwt == null) return null;
 
         String name = jwt.getClaimAsString("name");
@@ -66,6 +67,10 @@ public class PruebaFisicaController {
 
         String email = jwt.getClaimAsString("email");
         if (email != null && !email.isBlank()) return email;
+
+        if (nombreUsuario != null && !nombreUsuario.isBlank()) {
+            return nombreUsuario;
+        }
 
         return jwt.getSubject();
     }

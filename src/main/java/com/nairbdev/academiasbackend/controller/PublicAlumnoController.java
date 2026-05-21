@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,15 +30,16 @@ public class PublicAlumnoController {
     @GetMapping("/cedula/{cedula}/pruebas-fisicas")
     public AlumnoPublicoPruebasFisicasDTO obtenerPruebasFisicasPorCedula(
             @PathVariable String cedula,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader(value = "X-User-Name", required = false) String nombreUsuario
     ) {
         return jornadaFisicaService.obtenerMatrizFisicaAuditadaPorCedula(
                 cedula,
-                obtenerNombreConsultor(jwt)
+                obtenerNombreConsultor(jwt, nombreUsuario)
         );
     }
 
-    private String obtenerNombreConsultor(Jwt jwt) {
+    private String obtenerNombreConsultor(Jwt jwt, String nombreUsuario) {
         if (jwt == null) return null;
 
         String name = jwt.getClaimAsString("name");
@@ -48,6 +50,10 @@ public class PublicAlumnoController {
 
         String email = jwt.getClaimAsString("email");
         if (email != null && !email.isBlank()) return email;
+
+        if (nombreUsuario != null && !nombreUsuario.isBlank()) {
+            return nombreUsuario;
+        }
 
         return jwt.getSubject();
     }
