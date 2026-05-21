@@ -46,6 +46,6 @@ public class Programa extends AuditableEntity {
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
     public void setActivo(Boolean activo) { this.activo = activo; }
 
-    public Genero getGenero(Genero genero) { return this.genero; }
+    public Genero getGenero() { return genero; }
     public void setGenero(Genero genero) { this.genero = genero; }
 }

@@ -44,7 +44,7 @@ public class ProgramaServiceImpl implements ProgramaService {
                 (p.getAcademia() != null) ? p.getAcademia().getNombre() : null,
                 p.getNombre(),
                 p.getDescripcion(),
-                p.getGenero(Genero.M).name(),
+                p.getGenero() != null ? p.getGenero().name() : null,
                 p.getActivo()
         );
     }
@@ -73,7 +73,7 @@ public class ProgramaServiceImpl implements ProgramaService {
                 saved.getAcademia() != null ? saved.getAcademia().getNombre() : null,
                 saved.getNombre(),
                 saved.getDescripcion(),
-                saved.getGenero(genero).name(),
+                saved.getGenero() != null ? saved.getGenero().name() : null,
                 saved.getActivo()
         );
     }
@@ -95,17 +95,18 @@ public class ProgramaServiceImpl implements ProgramaService {
         if (dto.descripcion() != null) {
             programa.setDescripcion(dto.descripcion().trim());
         }
+        if (dto.genero() != null) {
+            programa.setGenero(Genero.valueOf(dto.genero()));
+        }
 
         Programa saved = programaRepository.save(programa);
-
-        Genero genero = Genero.valueOf(dto.genero());
 
         return new ProgramaResponseDTO(
                 saved.getId(),
                 saved.getAcademia() != null ? saved.getAcademia().getNombre() : null,
                 saved.getNombre(),
                 saved.getDescripcion(),
-                saved.getGenero(genero).name(),
+                saved.getGenero() != null ? saved.getGenero().name() : null,
                 saved.getActivo()
         );
     }

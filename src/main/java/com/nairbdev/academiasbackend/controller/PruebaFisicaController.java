@@ -1,11 +1,14 @@
 package com.nairbdev.academiasbackend.controller;
 
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.ConsolidadoFisicoResponseDTO;
+import com.nairbdev.academiasbackend.dto.pruebasFisicas.AlumnoPublicoPruebasFisicasDTO;
 import com.nairbdev.academiasbackend.dto.pruebasFisicas.PruebasFisicasTablaAlumnoDTO;
 import com.nairbdev.academiasbackend.service.JornadaFisicaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,6 +38,36 @@ public class PruebaFisicaController {
     @GetMapping("/academia/{academiaId}/consolidado-pruebas-fisicas")
     public ConsolidadoFisicoResponseDTO obtenerConsolidadoFisico(@PathVariable Long academiaId) {
         return jornadaFisicaService.obtenerConsolidadoFisicoPorAcademia(academiaId);
+    }
+
+    @Operation(
+            summary = "Verificar pruebas fisicas por cedula con auditoria",
+            description = "Consulta protegida que registra quien busco la cedula y el resultado de la busqueda."
+    )
+    @GetMapping("/verificar-pruebas-fisicas/cedula/{cedula}")
+    public AlumnoPublicoPruebasFisicasDTO verificarPruebasFisicasPorCedula(
+            @PathVariable String cedula,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return jornadaFisicaService.obtenerMatrizFisicaAuditadaPorCedula(
+                cedula,
+                obtenerNombreConsultor(jwt)
+        );
+    }
+
+    private String obtenerNombreConsultor(Jwt jwt) {
+        if (jwt == null) return null;
+
+        String name = jwt.getClaimAsString("name");
+        if (name != null && !name.isBlank()) return name;
+
+        String nickname = jwt.getClaimAsString("nickname");
+        if (nickname != null && !nickname.isBlank()) return nickname;
+
+        String email = jwt.getClaimAsString("email");
+        if (email != null && !email.isBlank()) return email;
+
+        return jwt.getSubject();
     }
 
 }

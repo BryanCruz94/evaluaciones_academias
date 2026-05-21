@@ -30,17 +30,20 @@ public class JornadaFisicaService {
     private final JornadaFisicaRepository jornadaFisicaRepository;
     private final ResultadoFisicoRepository resultadoFisicoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ConsultaAlumnoAuditoriaService consultaAlumnoAuditoriaService;
 
     public JornadaFisicaService(AlumnoRepository alumnoRepository,
                                 ProgramaPruebaFisicaRepository programaPruebaFisicaRepository,
                                 JornadaFisicaRepository jornadaFisicaRepository,
                                 ResultadoFisicoRepository resultadoFisicoRepository,
-                                UsuarioRepository usuarioRepository) {
+                                UsuarioRepository usuarioRepository,
+                                ConsultaAlumnoAuditoriaService consultaAlumnoAuditoriaService) {
         this.alumnoRepository = alumnoRepository;
         this.programaPruebaFisicaRepository = programaPruebaFisicaRepository;
         this.jornadaFisicaRepository = jornadaFisicaRepository;
         this.resultadoFisicoRepository = resultadoFisicoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.consultaAlumnoAuditoriaService = consultaAlumnoAuditoriaService;
     }
 
     @Transactional
@@ -462,6 +465,54 @@ public class JornadaFisicaService {
         }
 
         Alumno alumno = alumnos.get(0);
+        PruebasFisicasTablaAlumnoDTO pruebasFisicas = obtenerTablaBateriasPorAlumno(
+                alumno.getAcademia().getId(),
+                alumno.getId()
+        );
+
+        String generoTexto = alumno.getGenero() == null
+                ? null
+                : alumno.getGenero() == Genero.M ? "Masculino" : "Femenino";
+
+        return new AlumnoPublicoPruebasFisicasDTO(
+                alumno.getId(),
+                alumno.getNombres(),
+                alumno.getApellidos(),
+                alumno.getCedula(),
+                generoTexto,
+                alumno.getFechaNacimiento(),
+                alumno.getEstaturaCm(),
+                alumno.getPesoKg(),
+                alumno.getImc(),
+                alumno.getFotoUrl(),
+                alumno.getProgramaActual() != null ? alumno.getProgramaActual().getNombre() : null,
+                pruebasFisicas
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public AlumnoPublicoPruebasFisicasDTO obtenerMatrizFisicaAuditadaPorCedula(String cedula, String nombreConsultor) {
+        if (cedula == null || cedula.isBlank() || !cedula.matches("\\d{1,10}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cedula debe contener solo numeros y maximo 10 digitos.");
+        }
+
+        String cedulaNormalizada = cedula.trim();
+        List<Alumno> alumnos = alumnoRepository.findByCedulaConTodo(cedulaNormalizada);
+
+        if (alumnos.isEmpty()) {
+            consultaAlumnoAuditoriaService.registrarConsulta(nombreConsultor, cedulaNormalizada, null);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe un alumno con la cedula indicada.");
+        }
+
+        if (alumnos.size() > 1) {
+            consultaAlumnoAuditoriaService.registrarConsulta(nombreConsultor, cedulaNormalizada, null);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Existe mas de un alumno con esta cedula. Se requiere identificar la academia.");
+        }
+
+        Alumno alumno = alumnos.get(0);
+        consultaAlumnoAuditoriaService.registrarConsulta(nombreConsultor, cedulaNormalizada, alumno);
+
         PruebasFisicasTablaAlumnoDTO pruebasFisicas = obtenerTablaBateriasPorAlumno(
                 alumno.getAcademia().getId(),
                 alumno.getId()

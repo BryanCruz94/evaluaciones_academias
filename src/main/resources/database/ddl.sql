@@ -364,6 +364,33 @@ ALTER TABLE public.usuario OWNER TO academias_user;
 GRANT ALL ON TABLE public.usuario TO academias_user;
 
 
+-- public.consulta_alumno_auditoria definition
+
+-- Drop table
+
+-- DROP TABLE public.consulta_alumno_auditoria;
+
+CREATE TABLE public.consulta_alumno_auditoria (
+                                                  id bigserial NOT NULL,
+                                                  fecha_consulta timestamptz NOT NULL,
+                                                  nombre_consultor varchar(200) NOT NULL,
+                                                  cedula_consultada varchar(10) NOT NULL,
+                                                  alumno_id int8 NULL,
+                                                  nombre_alumno varchar(300) NULL,
+                                                  resultado_encontrado bool NOT NULL,
+                                                  created_at timestamptz DEFAULT now() NOT NULL,
+                                                  updated_at timestamptz DEFAULT now() NOT NULL,
+                                                  CONSTRAINT consulta_alumno_auditoria_pkey PRIMARY KEY (id)
+);
+CREATE INDEX idx_consulta_alumno_cedula ON public.consulta_alumno_auditoria USING btree (cedula_consultada);
+CREATE INDEX idx_consulta_alumno_fecha ON public.consulta_alumno_auditoria USING btree (fecha_consulta);
+
+-- Permissions
+
+ALTER TABLE public.consulta_alumno_auditoria OWNER TO academias_user;
+GRANT ALL ON TABLE public.consulta_alumno_auditoria TO academias_user;
+
+
 -- public.alumno definition
 
 -- Drop table

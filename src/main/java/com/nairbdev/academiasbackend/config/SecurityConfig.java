@@ -74,12 +74,17 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api-registro/auditoria-busquedas-alumnos",
+                                "/api-registro/auditoria-busquedas-alumnos/**"
+                        )
+                        .hasAuthority("admin:access")
                         .anyRequest().hasAnyAuthority("coach:access", "admin:access")
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt

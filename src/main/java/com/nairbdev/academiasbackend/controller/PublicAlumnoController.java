@@ -4,6 +4,8 @@ import com.nairbdev.academiasbackend.dto.pruebasFisicas.AlumnoPublicoPruebasFisi
 import com.nairbdev.academiasbackend.service.JornadaFisicaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/public/alumnos")
-@Tag(name = "Consulta publica", description = "Consulta publica de informacion fisica por cedula")
+@Tag(name = "Consulta legacy", description = "Consulta autenticada de informacion fisica por cedula")
 public class PublicAlumnoController {
 
     private final JornadaFisicaService jornadaFisicaService;
@@ -22,10 +24,31 @@ public class PublicAlumnoController {
 
     @Operation(
             summary = "Consultar pruebas fisicas por cedula",
-            description = "Endpoint publico de solo lectura para padres de familia. No requiere JWT."
+            description = "Endpoint legado autenticado. La pantalla principal usa /api-registro/verificar-pruebas-fisicas."
     )
     @GetMapping("/cedula/{cedula}/pruebas-fisicas")
-    public AlumnoPublicoPruebasFisicasDTO obtenerPruebasFisicasPorCedula(@PathVariable String cedula) {
-        return jornadaFisicaService.obtenerMatrizFisicaPublicaPorCedula(cedula);
+    public AlumnoPublicoPruebasFisicasDTO obtenerPruebasFisicasPorCedula(
+            @PathVariable String cedula,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return jornadaFisicaService.obtenerMatrizFisicaAuditadaPorCedula(
+                cedula,
+                obtenerNombreConsultor(jwt)
+        );
+    }
+
+    private String obtenerNombreConsultor(Jwt jwt) {
+        if (jwt == null) return null;
+
+        String name = jwt.getClaimAsString("name");
+        if (name != null && !name.isBlank()) return name;
+
+        String nickname = jwt.getClaimAsString("nickname");
+        if (nickname != null && !nickname.isBlank()) return nickname;
+
+        String email = jwt.getClaimAsString("email");
+        if (email != null && !email.isBlank()) return email;
+
+        return jwt.getSubject();
     }
 }

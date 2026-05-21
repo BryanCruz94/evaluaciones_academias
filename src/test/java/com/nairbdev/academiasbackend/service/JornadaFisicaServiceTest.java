@@ -25,13 +25,16 @@ class JornadaFisicaServiceTest {
     private final JornadaFisicaRepository jornadaFisicaRepository = mock(JornadaFisicaRepository.class);
     private final ResultadoFisicoRepository resultadoFisicoRepository = mock(ResultadoFisicoRepository.class);
     private final UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
+    private final ConsultaAlumnoAuditoriaService consultaAlumnoAuditoriaService =
+            mock(ConsultaAlumnoAuditoriaService.class);
 
     private final JornadaFisicaService service = new JornadaFisicaService(
             alumnoRepository,
             programaPruebaFisicaRepository,
             jornadaFisicaRepository,
             resultadoFisicoRepository,
-            usuarioRepository
+            usuarioRepository,
+            consultaAlumnoAuditoriaService
     );
 
     @Test
