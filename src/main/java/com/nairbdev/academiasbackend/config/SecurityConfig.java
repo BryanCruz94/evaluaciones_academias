@@ -85,6 +85,10 @@ public class SecurityConfig {
                                 "/api-registro/auditoria-busquedas-alumnos/**"
                         )
                         .hasAuthority("admin:access")
+                        .requestMatchers(HttpMethod.GET, "/api-registro/verificar-pruebas-fisicas/**")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/public/alumnos/**")
+                        .authenticated()
                         .anyRequest().hasAnyAuthority("coach:access", "admin:access")
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
