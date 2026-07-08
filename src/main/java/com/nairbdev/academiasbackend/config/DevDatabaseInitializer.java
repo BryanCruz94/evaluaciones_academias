@@ -2,12 +2,14 @@ package com.nairbdev.academiasbackend.config;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("dev")
+@ConditionalOnProperty(name = "app.dev-database-initializer.enabled", havingValue = "true")
 public class DevDatabaseInitializer implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
